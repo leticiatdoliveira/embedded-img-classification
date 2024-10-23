@@ -5,9 +5,6 @@ from pathlib import Path
 
 import tensorflow as tf
 
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.models import Sequential
 
 # TF settings
 AUTOTUNE = tf.data.AUTOTUNE
@@ -33,7 +30,6 @@ data_dir: str = user_dir + project_dir + 'data/' + dataset_name + '/'
 def show_const_var_settings():
     print("Printing const settings...")
     print("\t data_dir: " + data_dir)
-    print("\n")
 
 
 def check_data_dir():
