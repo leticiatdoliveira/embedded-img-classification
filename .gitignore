@@ -167,3 +167,6 @@ cython_debug/
 # Data
 data/plant-village/Tomato*/
 
+# Keras model
+results/plant-village/cnn_first_model.kerasgit
+
