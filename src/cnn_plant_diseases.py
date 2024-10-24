@@ -96,27 +96,128 @@ def split_dataset(dataset: tf.data.Dataset, train_split: float, val_split: float
     return train_dataset, val_dataset, test_dataset
 
 
-def load_split_dataset():
+def check_nb_of_data_in_dataset(dataset: tf.data.Dataset):
+    """
+    check the number of data in the dataset
+
+    :param dataset: tf.data.Dataset
+    :return:
+    """
+    nb_of_batches = dataset.cardinality().numpy()
+    nb_of_data = nb_of_batches * BATCH_SIZE
+    print(f"Nb of data: {nb_of_data} | Nb of batches: {nb_of_batches}")
+    return None
+
+
+def check_nb_of_classes_in_dataset(dataset: tf.data.Dataset):
+    """
+    check the number of classes in the dataset
+
+    :param dataset: tf.data.Dataset
+    :return:
+    """
+    class_names = dataset.class_names
+    print(f"Nb of classes: {len(class_names)} | Class names: {class_names}")
+    return None
+
+
+def load_split_dataset(val_split: float, test_split: float, silent_console: bool = True):
     """
     load and split the dataset
 
     :return: tf.data.Dataset, tf.data.Dataset, tf.data.Dataset
     """
-    dataset = tf.keras.preprocessing.image_dataset_from_directory(
+    # get training dataset
+    eval_split = val_split + test_split
+    train_ds = tf.keras.utils.image_dataset_from_directory(
         data_dir,
+        validation_split=eval_split,
+        subset="training",
         seed=123,
-        image_size=default_image_size,
-        batch_size=BATCH_SIZE,
+        image_size=IMAGE_SIZE,
+        batch_size=BATCH_SIZE
     )
 
-    training_dataset, validation_dataset, test_dataset = split_dataset(dataset,
-                                                                       0.7,
-                                                                       0.15,
-                                                                       0.15,
-                                                                       1000,
-                                                                       shuffle=True)
+    # get data to eval (validation and test)
+    val_ds = tf.keras.utils.image_dataset_from_directory(
+        data_dir,
+        validation_split=eval_split,
+        subset="validation",
+        seed=123,
+        image_size=IMAGE_SIZE,
+        batch_size=BATCH_SIZE
+    )
 
-    return training_dataset, validation_dataset, test_dataset
+    # # split validation dataset into validation and test datasets
+    # val_split_in_eval = val_split / eval_split
+    # test_split_in_eval = test_split / eval_split
+    # if val_split_in_eval + test_split_in_eval != 1:
+    #     raise ValueError("The sum of val_split_in_eval and test_split_in_eval must be equal to 1")
+    # val_ds = validation_dataset.take(int(val_split_in_eval * len(validation_dataset)))
+    # test_ds = validation_dataset.skip(int(test_split * len(validation_dataset)))
+
+    if not silent_console:
+        print("--- Train dataset: ")
+        check_nb_of_data_in_dataset(train_ds)
+        check_nb_of_classes_in_dataset(train_ds)
+        print("--- Validation dataset: ")
+        check_nb_of_data_in_dataset(val_ds)
+        check_nb_of_classes_in_dataset(val_ds)
+        # print("--- Test dataset: ")
+        # check_nb_of_data_in_dataset(test_ds)
+        # check_nb_of_classes_in_dataset(test_ds)
+
+    return train_ds, val_ds
+
+
+def check_dataset_classes(dataset: tf.data.Dataset, dataset_type: str):
+    """
+    check the dataset classes
+
+    :return:
+    """
+    class_names = dataset.class_names
+    print(f"Dataset: {dataset_type} | Nb of classes: {len(class_names)} | Class names: {class_names}")
+
+
+def check_batch_size(dataset: tf.data.Dataset, dataset_type: str):
+    """
+    check the batch size of the dataset
+
+    :return:
+    """
+    print(f"Checking batch size of the {dataset_type} dataset...")
+    for image_batch, labels_batch in dataset:
+        print(f"Image batch shape: {image_batch.shape}")
+        print(f"Label batch shape: {labels_batch.shape}")
+        break
+
+
+def display_img_sample_of_dataset(dataset: tf.data.Dataset, dataset_type: str):
+    """
+    display a sample of images from the dataset
+
+    :return:
+    """
+    plt.figure(figsize=(10, 10))
+    class_names = dataset.class_names
+
+    # Take one batch of images
+    for images, labels in dataset.take(1):
+        for i in range(9):
+            ax = plt.subplot(3, 3, i + 1)  # Create the subplot
+            ax.imshow(images[i].numpy().astype("uint8"))  # Show the image
+
+            # Set the title on the subplot (not the entire plot)
+            ax.set_title(f"{class_names[labels[i]]}", fontsize=8)
+            ax.axis("off")  # Remove the axis labels
+
+    # Adjust layout to prevent overlapping titles
+    plt.subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, hspace=0.3, wspace=0.3)
+
+    # Add a title to the entire plot
+    plt.suptitle(f"Sample of images from the {dataset_type} dataset", fontsize=16)
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -128,9 +229,21 @@ if __name__ == '__main__':
     print(f"# {dataset_name.upper()} dataset contains {nb_img_data} images")
 
     # Load split dataset
-    train_dataset, val_dataset, test_dataset = load_split_dataset()
+    train_dataset, val_dataset = load_split_dataset(0.2, 0.2, silent_console=True)
 
-    # Show dataset cardinality
-    print(f"train_dataset: {train_dataset.cardinality().numpy()}")
-    print(f"val_dataset: {val_dataset.cardinality().numpy()}")
-    print(f"test_dataset: {test_dataset.cardinality().numpy()}")
+    # Check dataset classes
+    check_dataset_classes(train_dataset, "train")
+    check_dataset_classes(val_dataset, "validation")
+
+    # Display sample of images
+    check_batch_size(train_dataset, "train")
+    display_img_sample_of_dataset(train_dataset, "train")
+
+    # Display sample of images
+    check_batch_size(val_dataset, "validation")
+    display_img_sample_of_dataset(val_dataset, "validation")
+
+
+
+
+
