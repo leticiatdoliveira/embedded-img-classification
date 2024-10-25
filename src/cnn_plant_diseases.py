@@ -6,11 +6,11 @@ from pathlib import Path
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.models import Sequential
-
+import tensorflow_model_optimization as tfmot
 
 # Model hyperparameters
 BATCH_SIZE = 16
-EPOCHS = 2
+EPOCHS = 15
 
 # Image settings param.
 IMAGE_SIZE = 256
@@ -239,7 +239,7 @@ def set_prefetch(dataset: tf.data.Dataset):
     return dataset.shuffle(1000).prefetch(buffer_size=AUTOTUNE)
 
 
-def normalize_dataset(dataset: tf.data.Dataset):
+def normalize_dataset(dataset: tf.data.Dataset, silent_console: bool = True):
     """
     Normalize image data.
     RGB values are in the [0, 255] range, so we need to scale them to the [0, 1] range.
@@ -252,9 +252,10 @@ def normalize_dataset(dataset: tf.data.Dataset):
     image_batch, labels_batch = next(iter(normalized_ds))
 
     # get the first image to check the pixel values
-    first_image = image_batch[0]
-    print(f"First image pixel values -> Min: {np.min(first_image)} | Max: {np.max(first_image)} | "
-          f"Shape: {first_image.shape}")
+    if not silent_console:
+        first_image = image_batch[0]
+        print(f"First image pixel values -> Min: {np.min(first_image)} | Max: {np.max(first_image)} | "
+              f"Shape: {first_image.shape}")
     return normalized_ds
 
 
@@ -265,21 +266,27 @@ def create_model(class_names: list, img_height: int, img_width: int):
     :return:
     """
     num_classes = len(class_names)
-
-    input_shape = (img_height, img_width, 3)
-
+    image_shape = (img_height, img_width, 3)
     model = Sequential([
-        layers.Input(shape=input_shape),
+        layers.Input(shape=image_shape),
+        layers.Resizing(img_height, img_width),
         layers.Rescaling(1. / 255),
-        layers.Conv2D(16, 3, padding='same', activation='relu'),
-        layers.MaxPooling2D(),
-        layers.Conv2D(32, 3, padding='same', activation='relu'),
-        layers.MaxPooling2D(),
-        layers.Conv2D(64, 3, padding='same', activation='relu'),
-        layers.MaxPooling2D(),
+        layers.Conv2D(32, kernel_size=(3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Dropout(0.2), # Dropout layer to reduce overfitting
         layers.Flatten(),
-        layers.Dense(128, activation='relu'),
-        layers.Dense(num_classes)
+        layers.Dense(64, activation='relu'),
+        layers.Dense(num_classes, activation='softmax'),
     ])
 
     return model
@@ -292,7 +299,7 @@ def compile_mode(model: tf.keras.Model):
     :return:
     """
     model.compile(optimizer='adam',
-                  loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  loss=tf.losses.SparseCategoricalCrossentropy(from_logits=False),
                   metrics=['accuracy'])
     model.summary()
 
@@ -360,6 +367,29 @@ def save_model(model: tf.keras.Model, model_name: str, file_format: str = "keras
     model.save(model_path)
 
 
+def show_first_data_in_dataset(dataset: tf.data.Dataset, class_names: list):
+    """
+    Show the first data in the dataset
+
+    :return:
+    """
+    print("\n---- Showing the first data in the dataset...")
+    # get the first batch of data
+    for image, label in dataset.take(1):
+        # Show the first image and label
+        first_img = image[0]
+        first_label = label[0]
+        print(f"First image shape: {first_img.shape} | First label: {first_label}")
+        print(f"First image pixel values -> Min: {np.min(first_img)} | Max: {np.max(first_img)}")
+
+        # Display the first image
+        plt.figure()
+        plt.imshow(first_img)
+        plt.title(f"First image example | Label: {first_label} | Class name: {class_names[first_label]}")
+        plt.grid(False)
+        plt.show()
+
+
 if __name__ == '__main__':
     show_const_var_settings()
 
@@ -398,6 +428,8 @@ if __name__ == '__main__':
     train_dataset_normalized = normalize_dataset(train_dataset)
     val_dataset_normalized = normalize_dataset(val_dataset)
 
+    show_first_data_in_dataset(train_dataset_normalized, train_classes)
+
     # Check if a fit model is already saved
     if os.path.exists(results_dir + "cnn_first_model.keras"):
         print("\n---- A model is already saved !")
@@ -426,6 +458,9 @@ if __name__ == '__main__':
 
     print("### Train dataset evaluation:")
     model.evaluate(train_dataset_normalized)
+
+    # Quantize the model
+    print("\n---- Quantizing the model...")
 
     # TODO : refactor print to logger
     # TODO : add test dataset
