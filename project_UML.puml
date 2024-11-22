@@ -1,0 +1,34 @@
+@startuml
+class Logger {
+    - log_file: str
+    + __init__(str)
+    + log(str): void
+}
+
+class Camera {
+    - img_size: int
+    - fps: int
+    - cap: VideoCapture
+    + __init__(int, int)
+    + read_frame(): ndarray
+}
+
+class BaseModel {
+    - model: RecursiveScriptModule
+    + __init__()
+    + preprocess(ndarray): Tensor
+    + predict(Tensor): Tensor
+    + get_top_predictions(Tensor, int): list
+}
+
+class MobileNetV2Model {
+    + __init__()
+}
+
+BaseModel <|-- MobileNetV2Model
+
+class Main {
+    + main(): void
+}
+
+@enduml
