@@ -1,7 +1,7 @@
 # src/main.py
 import cv2
 
-from src.models.model import Model
+from src.models.pre_trained_model import Model
 from src.utils.camera import Camera
 from src.utils.logger import Logger
 import src.utils.menu as menu
