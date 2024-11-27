@@ -32,14 +32,11 @@ def normalize_image(image: np.ndarray) -> torch.Tensor:
     return preprocess(image)
 
 
-def preprocess_image(image: np.ndarray, size: int) -> torch.Tensor:
+def convert_bgr_to_rgb(image: np.ndarray) -> np.ndarray:
     """
-    Preprocess the input image by resizing and normalizing.
+    Convert the input image from BGR to RGB format.
 
     :param image: Input image in numpy array format
-    :param size: Desired size to resize the image
-    :return: Preprocessed image as a torch tensor
+    :return: Image in RGB format
     """
-    resized_image = resize_image(image, size)
-    normalized_image = normalize_image(resized_image)
-    return normalized_image
+    return image[:, :, [2, 1, 0]]

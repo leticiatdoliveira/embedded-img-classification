@@ -24,7 +24,7 @@ class TestMobileNetV2Model(unittest.TestCase):
 
     def test_get_top_predictions(self):
         output = torch.rand(1, 1000)
-        top_predictions = self.model.get_top_predictions(output, top_k=2)
+        top_predictions = get_top_predictions(output, top_k=2)
         self.assertIsInstance(top_predictions, list)
         self.assertEqual(len(top_predictions), 2)
 
